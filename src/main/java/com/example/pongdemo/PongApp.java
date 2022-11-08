@@ -2,36 +2,39 @@ package com.example.pongdemo;
 
 import com.almasb.fxgl.app.GameApplication;
 import com.almasb.fxgl.app.GameSettings;
-import com.almasb.fxgl.entity.Entity;
-import javafx.geometry.Point2D;
 import javafx.scene.input.KeyCode;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Text;
 
 import java.util.Map;
 
 import static com.almasb.fxgl.dsl.FXGL.addUINode;
-import static com.almasb.fxgl.dsl.FXGL.entityBuilder;
 import static com.almasb.fxgl.dsl.FXGL.getAppHeight;
 import static com.almasb.fxgl.dsl.FXGL.getAppWidth;
 import static com.almasb.fxgl.dsl.FXGL.getUIFactoryService;
 import static com.almasb.fxgl.dsl.FXGL.getip;
-import static com.almasb.fxgl.dsl.FXGL.inc;
 import static com.almasb.fxgl.dsl.FXGL.onKey;
+import static com.example.pongdemo.Util.bottomBounceCheck;
+import static com.example.pongdemo.Util.getBallSize;
+import static com.example.pongdemo.Util.getPaddle1;
+import static com.example.pongdemo.Util.getPaddle2;
+import static com.example.pongdemo.Util.getPaddleHeight;
+import static com.example.pongdemo.Util.getPaddleSpeed;
+import static com.example.pongdemo.Util.getPaddleWidth;
+import static com.example.pongdemo.Util.player1BounceCheck;
+import static com.example.pongdemo.Util.player1ScoreCheck;
+import static com.example.pongdemo.Util.player2BounceCheck;
+import static com.example.pongdemo.Util.player2ScoreCheck;
+import static com.example.pongdemo.Util.setBall;
+import static com.example.pongdemo.Util.setPaddle1;
+import static com.example.pongdemo.Util.setPaddle2;
+import static com.example.pongdemo.Util.spawnBall;
+import static com.example.pongdemo.Util.spawnBat;
+import static com.example.pongdemo.Util.topBounceCheck;
+import static com.example.pongdemo.Util.updateBall;
 
-public class PongApp extends GameApplication {
-
-    private static final int PADDLE_WIDTH = 30;
-    private static final int PADDLE_HEIGHT = 100;
-    private static final int BALL_SIZE = 20;
-    private static final int PADDLE_SPEED = 5;
-    private static final int BALL_SPEED = 2;
-
-    private Entity paddle1;
-    private Entity paddle2;
-    private Entity ball;
-
+public class PongApp extends GameApplication
+{
     @Override
     protected void initSettings(GameSettings gameSettings) {
         gameSettings.setTitle("Pong");
@@ -39,10 +42,10 @@ public class PongApp extends GameApplication {
 
     @Override
     protected void initInput() {
-        onKey(KeyCode.Z, () -> paddle1.translateY(-PADDLE_SPEED));
-        onKey(KeyCode.S, () -> paddle1.translateY(PADDLE_SPEED));
-        onKey(KeyCode.UP, () -> paddle2.translateY(-PADDLE_SPEED));
-        onKey(KeyCode.DOWN, () -> paddle2.translateY(PADDLE_SPEED));
+        onKey(KeyCode.Z, () -> getPaddle1().translateY(-getPaddleSpeed()));
+        onKey(KeyCode.S, () -> getPaddle1().translateY(getPaddleSpeed()));
+        onKey(KeyCode.UP, () -> getPaddle2().translateY(-getPaddleSpeed()));
+        onKey(KeyCode.DOWN, () -> getPaddle2().translateY(getPaddleSpeed()));
     }
 
     @Override
@@ -53,9 +56,9 @@ public class PongApp extends GameApplication {
 
     @Override
     protected void initGame() {
-        paddle1 = spawnBat(0, getAppHeight()/2.0 - PADDLE_HEIGHT/2.0);
-        paddle2 = spawnBat(getAppWidth() - PADDLE_WIDTH, getAppHeight()/2.0 - PADDLE_HEIGHT/2.0);
-        ball = spawnBall(getAppWidth()/2.0 - BALL_SIZE/2.0, getAppHeight()/2.0 - BALL_SIZE/2.0);
+        setPaddle1(spawnBat(0, getAppHeight()/2.0 - getPaddleHeight()/2.0));
+        setPaddle2(spawnBat(getAppWidth() - getPaddleWidth(), getAppHeight()/2.0 - getPaddleHeight()/2.0));
+        setBall(spawnBall(getAppWidth()/2.0 - getBallSize()/2.0, getAppHeight()/2.0 - getBallSize()/2.0));
     }
 
     @Override
@@ -72,59 +75,16 @@ public class PongApp extends GameApplication {
 
     @Override
     protected void onUpdate(double tpf) {
-        Point2D velocity = ball.getObject("velocity");
-        ball.translate(velocity);
+        updateBall();
 
-        if(ball.getX() == paddle1.getRightX()
-                && ball.getY() < paddle1.getBottomY()
-                && ball.getBottomY() > paddle1.getY())
-            ball.setProperty("velocity", new Point2D(-velocity.getX(), velocity.getY()));
+        player1BounceCheck();
+        player2BounceCheck();
 
-        if (ball.getRightX() == paddle2.getX()
-                && ball.getY() < paddle2.getBottomY()
-                && ball.getBottomY() > paddle2.getY()) {
-            ball.setProperty("velocity", new Point2D(-velocity.getX(), velocity.getY()));
-        }
+        player1ScoreCheck();
+        player2ScoreCheck();
 
-        if(ball.getX() <= 0) {
-            inc("score2", +1);
-            resetBall();
-        }
-
-        if(ball.getRightX() >= getAppWidth())
-        {
-            inc("score1", +1);
-        }
-
-        if (ball.getY() <= 0) {
-            ball.setY(0);
-            ball.setProperty("velocity", new Point2D(velocity.getX(), -velocity.getY()));
-        }
-
-        if (ball.getBottomY() >= getAppHeight()) {
-            ball.setY(getAppHeight() - BALL_SIZE);
-            ball.setProperty("velocity", new Point2D(velocity.getX(), -velocity.getY()));
-        }
-    }
-
-    private Entity spawnBat(double x, double y) {
-        return entityBuilder()
-                .at(x, y)
-                .viewWithBBox(new Rectangle(PADDLE_WIDTH, PADDLE_HEIGHT))
-                .buildAndAttach();
-    }
-
-    private Entity spawnBall(double x, double y) {
-        return entityBuilder()
-                .at(x, y)
-                .viewWithBBox(new Rectangle(BALL_SIZE, BALL_SIZE))
-                .with("velocity", new Point2D(BALL_SPEED, BALL_SPEED))
-                .buildAndAttach();
-    }
-
-    private void resetBall() {
-        ball.setPosition(getAppWidth()/2.0 - BALL_SIZE/2.0, getAppHeight()/2.0 - BALL_SIZE/2.0);
-        ball.setProperty("velocity", new Point2D(BALL_SPEED, BALL_SPEED));
+        topBounceCheck();
+        bottomBounceCheck();
     }
 
     public static void main(String[] args) {
